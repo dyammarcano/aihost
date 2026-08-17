@@ -1,0 +1,29 @@
+name: recover-source
+on:
+  push:
+    paths:
+      - '.payload/READY'
+permissions:
+  contents: write
+jobs:
+  recover:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Reconstruct source tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .payload/part-*.b64 > /tmp/source.b64
+          printf '%s  %s\n' 'a0a8606b46a91b1adbea1d43c03665752c1fe41e09dde6a30b316876652d52af' /tmp/source.b64 | sha256sum -c -
+          base64 -d /tmp/source.b64 > /tmp/source.tar.xz
+          printf '%s  %s\n' '5550e1ee9d5ba0d008e5fadc3e38ad56cf731aa61fc13984527bc86fb5d222c4' /tmp/source.tar.xz | sha256sum -c -
+          find . -mindepth 1 -maxdepth 1 ! -name .git -exec rm -rf {} +
+          tar -xJf /tmp/source.tar.xz -C .
+          git config user.name 'Dyam Marcano'
+          git config user.email 'dyam.marcano@gmail.com'
+          git add -A
+          git commit -m 'restore complete aihost source tree'
+          git push origin HEAD:main
